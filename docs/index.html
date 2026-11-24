@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>График</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  body{margin:0;padding:12px;font-family:-apple-system,Roboto,sans-serif;
+    background:var(--tg-theme-bg-color,#fff);color:var(--tg-theme-text-color,#000)}
+  .head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .head b{text-transform:capitalize;font-size:18px}
+  button{font:inherit;border:0;border-radius:10px;cursor:pointer;color:inherit;
+    background:var(--tg-theme-secondary-bg-color,#eee)}
+  .nav{width:40px;height:40px;font-size:20px}
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+  .wd{font-size:12px;opacity:.6;padding:4px 0}
+  .day{height:40px}
+  .day.on{background:var(--tg-theme-button-color,#2481cc);color:var(--tg-theme-button-text-color,#fff)}
+  .day.lock{background:#2e9e4f;color:#fff}
+  .day:disabled{opacity:.3}
+  h3{margin:16px 0 8px;font-size:15px}
+  .row{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+  .row span{flex:1;font-size:14px}
+  .pl{padding:8px 10px;font-size:13px}
+  .pl.active{background:var(--tg-theme-button-color,#2481cc);color:var(--tg-theme-button-text-color,#fff)}
+  #save{width:100%;padding:14px;margin-top:12px;font-size:16px;
+    background:var(--tg-theme-button-color,#2481cc);color:var(--tg-theme-button-text-color,#fff)}
+  #msg{text-align:center;margin-top:10px;font-size:14px;min-height:20px}
+</style>
+</head>
+<body>
+<div class="head">
+  <button class="nav" id="prev">‹</button><b id="title"></b><button class="nav" id="next">›</button>
+</div>
+<div class="grid" id="grid"></div>
+<h3>Выбранные дни и площадка:</h3>
+<div id="list"></div>
+<button id="save">Сохранить</button>
+<div id="msg"></div>
+
+<script>
+// !!! Впишите адрес вашего сервера на Render (без слэша в конце) !!!
+const API_URL = "https://ВАШ-СЕРВИС.onrender.com";
+
+const tg = window.Telegram.WebApp;
+tg.ready(); tg.expand();
+
+const PLATFORMS = [["Ozon","Ozon"],["WB","WB"],["Yandex","Яндекс"]];
+const sel = {};            // дата -> площадка ("" если ещё не выбрана)
+const locked = new Set();  // дни, на которые начальник уже поставил в график
+const pad = n => String(n).padStart(2, "0");
+const key = (y, m, d) => `${y}-${pad(m+1)}-${pad(d)}`;
+const now = new Date();
+const today = key(now.getFullYear(), now.getMonth(), now.getDate());
+let view = new Date(now.getFullYear(), now.getMonth(), 1);
+const $ = id => document.getElementById(id);
+
+async function api(path, opts = {}) {
+  const r = await fetch(API_URL + path, {
+    ...opts,
+    headers: {"Content-Type": "application/json", "X-Init-Data": tg.initData}
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e.detail || ("Ошибка " + r.status));
+  }
+  return r.json();
+}
+
+function renderCal() {
+  const y = view.getFullYear(), m = view.getMonth();
+  $("title").textContent = view.toLocaleDateString("ru-RU", {month: "long", year: "numeric"});
+  let h = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"].map(w => `<div class="wd">${w}</div>`).join("");
+  const offset = (new Date(y, m, 1).getDay() + 6) % 7;
+  for (let i = 0; i < offset; i++) h += "<span></span>";
+  const n = new Date(y, m + 1, 0).getDate();
+  for (let d = 1; d <= n; d++) {
+    const k = key(y, m, d);
+    const cls = ["day"];
+    if (k in sel) cls.push("on");
+    if (locked.has(k)) cls.push("lock");
+    h += `<button class="${cls.join(" ")}" data-k="${k}" ${k < today ? "disabled" : ""}>${d}</button>`;
+  }
+  $("grid").innerHTML = h;
+}
+
+function renderList() {
+  const keys = Object.keys(sel).sort();
+  if (!keys.length) { $("list").innerHTML = "<div style='opacity:.6;font-size:14px'>Нажмите на дни в календаре</div>"; return; }
+  $("list").innerHTML = keys.map(k => {
+    const label = new Date(k + "T00:00:00").toLocaleDateString("ru-RU", {weekday: "short", day: "numeric", month: "short"});
+    if (locked.has(k)) {
+      const p = PLATFORMS.find(x => x[0] === sel[k])[1];
+      return `<div class="row"><span>${label}</span><b>✅ в графике: ${p}</b></div>`;
+    }
+    const btns = PLATFORMS.map(([v, t]) =>
+      `<button class="pl ${sel[k] === v ? "active" : ""}" data-k="${k}" data-p="${v}">${t}</button>`).join("");
+    return `<div class="row"><span>${label}</span>${btns}</div>`;
+  }).join("");
+}
+
+function render() { renderCal(); renderList(); }
+
+$("grid").onclick = e => {
+  const k = e.target.dataset.k;
+  if (!k || locked.has(k)) return;
+  if (k in sel) delete sel[k]; else sel[k] = "";
+  render();
+};
+$("list").onclick = e => {
+  const {k, p} = e.target.dataset;
+  if (!k || !p) return;
+  sel[k] = p;
+  renderList();
+};
+$("prev").onclick = () => { view = new Date(view.getFullYear(), view.getMonth() - 1, 1); renderCal(); };
+$("next").onclick = () => { view = new Date(view.getFullYear(), view.getMonth() + 1, 1); renderCal(); };
+
+$("save").onclick = async () => {
+  const days = Object.keys(sel).filter(k => !locked.has(k)).map(k => ({date: k, platform: sel[k]}));
+  if (days.some(d => !d.platform)) { $("msg").textContent = "⚠️ Выберите площадку для каждого дня"; return; }
+  $("msg").textContent = "Сохраняю...";
+  try {
+    await api("/api/availability", {method: "POST", body: JSON.stringify({days})});
+    $("msg").textContent = "✅ Сохранено!";
+    tg.HapticFeedback && tg.HapticFeedback.notificationOccurred("success");
+  } catch (err) {
+    $("msg").textContent = "❌ " + err.message;
+  }
+};
+
+(async () => {
+  render();
+  $("msg").textContent = "Загружаю...";
+  try {
+    // первый запрос может занять до минуты: бесплатный сервер "просыпается"
+    const rows = await api("/api/availability");
+    rows.forEach(r => { if (r.date >= today) { sel[r.date] = r.platform; if (r.is_assigned) locked.add(r.date); } });
+    $("msg").textContent = "";
+    render();
+  } catch (err) {
+    $("msg").textContent = "❌ " + err.message;
+  }
+})();
+</script>
+</body>
+</html>
