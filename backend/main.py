@@ -41,6 +41,7 @@ app.add_middleware(
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*", "X-Init-Data"],
+    expose_headers=["*"],  # <--- Важное дополнение
 )
 
 
@@ -115,6 +116,4 @@ async def save_availability(req: SaveRequest, user=Depends(current_user)):
     if user["id"] != BOSS_ID:
         await notify_boss(f"📅 {user['name']} обновил(а) доступность: {len(clean)} дн.")
     return {"saved": len(clean)}
-@app.options("/api/availability")
-async def options_availability():
-    return {"message": "OK"}
+
