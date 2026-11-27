@@ -36,14 +36,11 @@ app = FastAPI(lifespan=lifespan)
 from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
-    @app.options("/api/availability")
-    async def options_availability():
-    return {"message": "OK"}
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*", "X-Init-Data"],  # <--- Явно разрешаем наш заголовок
+    allow_headers=["*", "X-Init-Data"],
 )
 
 
@@ -118,3 +115,6 @@ async def save_availability(req: SaveRequest, user=Depends(current_user)):
     if user["id"] != BOSS_ID:
         await notify_boss(f"📅 {user['name']} обновил(а) доступность: {len(clean)} дн.")
     return {"saved": len(clean)}
+@app.options("/api/availability")
+async def options_availability():
+    return {"message": "OK"}
