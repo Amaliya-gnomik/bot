@@ -60,6 +60,8 @@ async function api(path, opts = {}) {
   const r = await fetch(API_URL + path, {
     ...opts,
     headers: {"Content-Type": "application/json", "X-Init-Data": tg.initData}
+  }); // <--- Вот здесь была пропущена закрывающая скобка
+
   if (!r.ok) {
     const e = await r.json().catch(() => ({}));
     throw new Error(e.detail || ("Ошибка " + r.status));
