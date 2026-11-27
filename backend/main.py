@@ -1,4 +1,4 @@
-# main.py - сервер FastAPI. Он же запускает бота. Именно этот файл запускает Render.
+# main.py - сервер FastAPI. Он же запускает бота.
 
 import asyncio
 import datetime
@@ -22,7 +22,6 @@ from bot import bot, dp, BOT_TOKEN, BOSS_ID, WEBAPP_URL, notify_boss
 async def lifespan(app: FastAPI):
     db.init_db()
     await bot.delete_webhook(drop_pending_updates=True)
-    # кнопка "График" рядом со строкой ввода у всех пользователей
     await bot.set_chat_menu_button(
         menu_button=MenuButtonWebApp(text="График", web_app=WebAppInfo(url=WEBAPP_URL)))
     task = asyncio.create_task(dp.start_polling(bot, handle_signals=False, close_bot_session=False))
@@ -33,22 +32,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-from fastapi.middleware.cors import CORSMiddleware
-
+# Настройка CORS: разрешаем все домены и заголовки
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*", "X-Init-Data"],
-    expose_headers=["*"],  # <--- Важное дополнение
+    allow_headers=["*"],
 )
 
 
-
 def check_init_data(init_data: str):
-    """Проверяет, что данные действительно пришли из Telegram (подпись HMAC).
-    Возвращает словарь пользователя или None."""
     try:
         parsed = dict(parse_qsl(init_data, keep_blank_values=True))
         received_hash = parsed.pop("hash")
@@ -57,7 +51,7 @@ def check_init_data(init_data: str):
         calc = hmac.new(secret, check_string.encode(), hashlib.sha256).hexdigest()
         if not hmac.compare_digest(calc, received_hash):
             return None
-        if time.time() - int(parsed["auth_date"]) > 86400:  # старше суток - не принимаем
+        if time.time() - int(parsed["auth_date"]) > 86400:
             return None
         return json.loads(parsed["user"])
     except Exception:
@@ -117,3 +111,10 @@ async def save_availability(req: SaveRequest, user=Depends(current_user)):
         await notify_boss(f"📅 {user['name']} обновил(а) доступность: {len(clean)} дн.")
     return {"saved": len(clean)}
 
+
+# --- ВАЖНО: Явный обработчик для OPTIONS-запросов (Preflight) ---
+# Иногда FastAPI/Starlette не отвечает на preflight автоматически, если заголовки сложные.
+# Этот обработчик гарантирует, что браузер получит разрешение.
+@app.options("/{full_path:path}")
+async def options_handler(full_path: str):
+    return {"message": "OK"}
