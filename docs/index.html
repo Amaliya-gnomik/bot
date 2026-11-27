@@ -59,8 +59,7 @@ const $ = id => document.getElementById(id);
 async function api(path, opts = {}) {
   const r = await fetch(API_URL + path, {
     ...opts,
-    headers: {"Content-Type": "application/json", "X-Init-Data": tg.initData}
-  });
+    headers: {"Content-Type": "application/json"} // "X-Init-Data": tg.initData
   if (!r.ok) {
     const e = await r.json().catch(() => ({}));
     throw new Error(e.detail || ("Ошибка " + r.status));
