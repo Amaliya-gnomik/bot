@@ -36,6 +36,9 @@ app = FastAPI(lifespan=lifespan)
 from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
+    @app.options("/api/availability")
+    async def options_availability():
+    return {"message": "OK"}
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,
