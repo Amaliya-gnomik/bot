@@ -38,9 +38,9 @@ from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,  # <-- ВАЖНО: False, а не True
+    allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-Init-Data"],  # <--- Явно разрешаем наш заголовок
 )
 
 
