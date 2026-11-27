@@ -32,18 +32,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
 from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,  # <-- ВАЖНО: False, а не True
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Разрешаем запросы со страницы на GitHub Pages. Защита - проверка initData ниже.
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
 def check_init_data(init_data: str):
