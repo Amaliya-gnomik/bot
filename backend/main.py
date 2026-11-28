@@ -16,7 +16,6 @@ from aiogram.types import MenuButtonWebApp, WebAppInfo
 
 import database as db
 from bot import bot, dp, BOT_TOKEN, BOSS_ID, WEBAPP_URL, notify_boss
-await bot.delete_webhook(drop_pending_updates=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
