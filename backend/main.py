@@ -16,7 +16,7 @@ from aiogram.types import MenuButtonWebApp, WebAppInfo
 
 import database as db
 from bot import bot, dp, BOT_TOKEN, BOSS_ID, WEBAPP_URL, notify_boss
-
+await bot.delete_webhook(drop_pending_updates=True)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -118,3 +118,6 @@ async def save_availability(req: SaveRequest, user=Depends(current_user)):
 @app.options("/{full_path:path}")
 async def options_handler(full_path: str):
     return {"message": "OK"}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=10000)
